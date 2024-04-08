@@ -1,4 +1,4 @@
-module gitlab.landui.cn/gomod/cmd
+module github.com/AlexiaChen/cmd
 
 go 1.20
 
