@@ -5,7 +5,6 @@ go 1.20
 require (
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.13.5
-	gitlab.landui.cn/gomod/global v0.0.1
 	gitlab.landui.cn/gomod/logs v0.0.1
 	golang.org/x/crypto v0.22.0
 )
@@ -26,6 +25,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.19 // indirect
 	gitlab.landui.cn/gomod/database v0.0.1 // indirect
+	gitlab.landui.cn/gomod/global v0.0.1 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect

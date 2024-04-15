@@ -11,11 +11,11 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pkg/sftp"
-	"gitlab.landui.cn/gomod/global"
 	"gitlab.landui.cn/gomod/logs"
 	"golang.org/x/crypto/ssh"
 )
 
+// NewSSHClient 新建并获取ssh链接
 func NewSSHClient(ip, port, user, password string) (*ssh.Client, error) {
 	config := &ssh.ClientConfig{
 		User: user,
@@ -38,6 +38,7 @@ func NewSSHClient(ip, port, user, password string) (*ssh.Client, error) {
 	return nil, errors.Wrap(errors.New("ssh链接失败"), "NewSSHClient")
 }
 
+// Run 调用ssh执行shell命令
 func Run(client *ssh.Client, shell string) (string, error) {
 	session, err := client.NewSession()
 	if err != nil {
@@ -51,7 +52,34 @@ func Run(client *ssh.Client, shell string) (string, error) {
 	return string(buf), nil
 }
 
-// UploadDirectory 上传文件夹
+// CreateSftp 基于ssh链接，创建出sftp链接
+func CreateSftp(client *ssh.Client) (*sftp.Client, error) {
+	return sftp.NewClient(client)
+}
+
+// SyncSftp sftp同步文件
+func SyncSftp(client *ssh.Client, localFilePath embed.FS, srcDir, destDir string) error {
+	sftpClient, err := CreateSftp(client)
+	if err != nil {
+		return fmt.Errorf("创建sftp客户端失败: %s", err.Error())
+	}
+	defer sftpClient.Close()
+
+	fileList, err := localFilePath.ReadDir(srcDir)
+	if err != nil {
+		return fmt.Errorf("读取文件夹失败: %s srcDir %s", err.Error(), srcDir)
+	}
+	for _, v := range fileList {
+		Run(client, "rm -rf "+v.Name())
+		err = uploadFileEmbed(sftpClient, localFilePath, srcDir+"/"+v.Name(), destDir)
+		if err != nil {
+			return fmt.Errorf("上传sh文件失败: %s", err.Error())
+		}
+	}
+	return nil
+}
+
+// UploadDirectory sftp上传文件夹
 func UploadDirectory(sftpClient *sftp.Client, localPath string, remotePath string) error {
 	localFiles, err := os.ReadDir(localPath)
 	if err != nil {
@@ -104,11 +132,9 @@ func uploadFile(sftpClient *sftp.Client, localFilePath string, remotePath string
 }
 func uploadFileEmbed(sftpClient *sftp.Client, localFilePath embed.FS, name, remotePath string) error {
 	srcFile, err := localFilePath.ReadFile(name)
-	//srcFile, err := os.Open(localFilePath)
 	if err != nil {
 		return fmt.Errorf("打开文件失败: %s path: %v", err.Error(), localFilePath)
 	}
-	//defer srcFile.Close()
 
 	var remoteFileName = path.Base(name)
 
@@ -119,37 +145,6 @@ func uploadFileEmbed(sftpClient *sftp.Client, localFilePath embed.FS, name, remo
 	}
 	defer dstFile.Close()
 
-	//ff, err := io.ReadAll(srcFile)
-	//if err != nil {
-	//	logs.New().Error("读取所有文件失败", err)
-	//	return err
-	//
-	//}
 	dstFile.Write(srcFile)
 	return nil
-}
-func CreateSftp(client *ssh.Client) (*sftp.Client, error) {
-	return sftp.NewClient(client)
-}
-func SyncSftp(client *ssh.Client, srcDir, destDir string) error {
-	sftpClient, err := CreateSftp(client)
-	if err != nil {
-		return fmt.Errorf("创建sftp客户端失败: %s", err.Error())
-	}
-	defer sftpClient.Close()
-
-	fileList, err := global.Shell.ReadDir(srcDir)
-	if err != nil {
-		return fmt.Errorf("读取文件夹失败: %s srcDir %s", err.Error(), srcDir)
-	}
-	for _, v := range fileList {
-		Run(client, "rm -rf "+v.Name())
-		err = uploadFileEmbed(sftpClient, global.Shell, srcDir+"/"+v.Name(), destDir)
-		if err != nil {
-			return fmt.Errorf("上传sh文件失败: %s", err.Error())
-		}
-	}
-
-	return nil
-
 }
